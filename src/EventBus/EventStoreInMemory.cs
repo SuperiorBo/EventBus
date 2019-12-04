@@ -22,18 +22,35 @@ namespace EventBus
             if(!_handlers[eventName].Any())
                 _handlers[eventName] = new List<SubscriptionInfo>();
 
-            var handlerType = typeof(TEventHandler);
+            DoAddSubscription(eventName, typeof(TEventHandler), false);
 
-            if (_handlers[eventName].Any(x=>x.HandlerType == handlerType))
+            if (!_eventTypes.Contains(typeof(TEvent)))
+                _eventTypes.Add(typeof(TEvent));
+        }
+
+        public void AddDynamicSubscription<TEventHandler>(string eventName)
+            where TEventHandler : IDynamicEventHandler
+        {
+            
+            DoAddSubscription(eventName, typeof(TEventHandler), true);
+
+        }
+
+        private void DoAddSubscription(string eventName, Type handlerType, bool isDynamic)
+        {
+            if (!_handlers[eventName].Any())
+                _handlers.Add(eventName, new List<SubscriptionInfo>());
+
+            if (_handlers[eventName].Any(x => x.IsDynamic == false && x.HandlerType == handlerType))
             {
                 throw new ArgumentException(
                     $"Handler Type {handlerType.Name} already registered for '{eventName}'", nameof(handlerType));
             }
 
-            _handlers[eventName].Add(SubscriptionInfo.Typed(handlerType));
-            
-            if (!_eventTypes.Contains(typeof(TEvent)))
-                _eventTypes.Add(typeof(TEvent));
+            if(isDynamic)
+                _handlers[eventName].Add(SubscriptionInfo.Dynamic(handlerType));
+            else
+                _handlers[eventName].Add(SubscriptionInfo.Typed(handlerType));
         }
 
         public void RemoveSubscription<TEvent, TEventHandler>()
@@ -41,30 +58,20 @@ namespace EventBus
             where TEventHandler : IEventHandler<TEvent>
         {
             var eventName = GetEventKey<TEvent>();
-            var handlerType = typeof(TEventHandler);
-            var handlerToRemove = FindSubscriptionToRemove(eventName, handlerType);
+
+            var handlerToRemove = FindSubscriptionToRemove(eventName, typeof(TEventHandler));
             RemoveHandler(eventName,handlerToRemove);
         }
 
-        public void AddDynamicSubscription<TEventHandler>(string eventName)
-            where TEventHandler : IDynamicEventHandler
-        {
-            if(!_handlers[eventName].Any())
-                _handlers[eventName] = new List<SubscriptionInfo>();
-
-            var handlerType = typeof(TEventHandler);
-
-            if(HasSubscriptionsForEvent<TEventHandler>(eventName))
-
-
-
-        }
+        
 
         public void RemoveDynamicSubscription<TEventHandler>(string eventName)
             where TEventHandler : IDynamicEventHandler
         {
-            throw new NotImplementedException();
+            var handlerToRemove = FindSubscriptionToRemove(eventName, typeof(TEventHandler));
+            RemoveHandler(eventName, handlerToRemove);
         }
+
 
         private SubscriptionInfo FindSubscriptionToRemove(string eventName, Type handlerType)
         {
@@ -103,20 +110,17 @@ namespace EventBus
 
         public bool HasSubscriptionsForEvent(string eventName) => _handlers.ContainsKey(eventName);
 
-        public Type GetEventTypeByName(string eventName)
-        {
-            throw new NotImplementedException();
-        }
+        public Type GetEventTypeByName(string eventName) => _eventTypes.SingleOrDefault(x => x.Name == eventName);
+
 
         public IEnumerable<SubscriptionInfo> GetHandlersForEvent<TEvent>() where TEvent : IEventBase
         {
-            throw new NotImplementedException();
+            var eventName = GetEventKey<TEvent>();
+            return GetHandlersForEvent(eventName);
         }
 
-        public IEnumerable<SubscriptionInfo> GetHandlersForEvent(string eventName)
-        {
-            throw new NotImplementedException();
-        }
+        public IEnumerable<SubscriptionInfo> GetHandlersForEvent(string eventName) => _handlers[eventName];
+
 
         public void Clear()
         {

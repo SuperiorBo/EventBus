@@ -27,17 +27,17 @@ namespace EventBus
             throw new NotImplementedException();
         }
 
-        public void SubscribeDynamic<TEventHandler>() where TEventHandler : IDynamicEventHandler
+        public void SubscribeDynamic<TEventHandler>(string eventName) where TEventHandler : IDynamicEventHandler
         {
             throw new NotImplementedException();
         }
 
-        public bool Unsubscribe<TEvent, TEventHandler>() where TEvent : IEventBase where TEventHandler : IEventHandler<TEvent>
+        void ISubscriber.Unsubscribe<TEvent, TEventHandler>()
         {
             throw new NotImplementedException();
         }
 
-        public bool UnsubscribeDynamic<TEventHandler>() where TEventHandler : IDynamicEventHandler
+        public void UnsubscribeDynamic<TEventHandler>(string eventName) where TEventHandler : IDynamicEventHandler
         {
             throw new NotImplementedException();
         }

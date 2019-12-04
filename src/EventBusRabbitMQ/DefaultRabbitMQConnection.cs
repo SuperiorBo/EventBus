@@ -13,10 +13,10 @@ using RabbitMQ.Client.Exceptions;
 
 namespace EventBusRabbitMQ
 {
-    public class DefaultRabbitMQPersistentConnection : IRabbitMQPersistentConnection
+    public class DefaultRabbitMQConnection : IRabbitMQConnection
     {
         private readonly IConnectionFactory _connectionFactory;
-        private readonly ILogger<DefaultRabbitMQPersistentConnection> _logger;
+        private readonly ILogger<DefaultRabbitMQConnection> _logger;
         private readonly int _retryCount;
 
         private IConnection _connection;
@@ -25,14 +25,14 @@ namespace EventBusRabbitMQ
 
         object sync_root = new object();
 
-        public DefaultRabbitMQPersistentConnection(
+        public DefaultRabbitMQConnection(
             IConnectionFactory connectionFactory,
-            ILogger<DefaultRabbitMQPersistentConnection> logger,
+            ILogger<DefaultRabbitMQConnection> logger,
             int retryCount = 5
             )
         {
             _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
-            _logger = logger ?? new NullLogger<DefaultRabbitMQPersistentConnection>();
+            _logger = logger ?? new NullLogger<DefaultRabbitMQConnection>();
             _retryCount = retryCount;
         }
 
@@ -97,22 +97,34 @@ namespace EventBusRabbitMQ
 
         private void OnConnectionBlocked(object sender, ConnectionBlockedEventArgs e)
         {
-            throw new NotImplementedException();
+            if (_disposed) return;
+
+            _logger.LogWarning("A RabbitMQ connection is on blocked. Trying to re-connect...");
+
+            TryConnect();
         }
 
         private void OnCallbackException(object sender, CallbackExceptionEventArgs e)
         {
-            throw new NotImplementedException();
+            if (_disposed) return;
+
+            _logger.LogWarning("A RabbitMQ connection is on exception. Trying to re-connect...");
+
+            TryConnect();
         }
 
         private void OnConnectionShutdown(object sender, ShutdownEventArgs e)
         {
-            throw new NotImplementedException();
+            if (_disposed) return;
+
+            _logger.LogWarning("A RabbitMQ connection is on shutdown. Trying to re-connect...");
+
+            TryConnect();
         }
 
         public IModel CreateModel()
         {
-            throw new NotImplementedException();
+            return _connection.CreateModel();
         }
     }
 }

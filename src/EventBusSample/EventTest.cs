@@ -5,24 +5,25 @@ using System.Threading.Tasks;
 using EventBus.Abstractions;
 using EventBus.Events;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace EventBusSample
 {
-    internal class EventTest
-    {
-        public static void MainTest()
-        {
-            var eventBus = DependencyResolver.Current.ResolveService<IEventBus>();
-            eventBus.Subscribe<CounterEvent, CounterEventHandler1>();
-            eventBus.Subscribe<CounterEvent, CounterEventHandler2>();
-            eventBus.Subscribe<CounterEvent, DelegateEventHandler<CounterEvent>>();
-            eventBus.Publish(new CounterEvent { Counter = 1 });
+    //internal class EventTest
+    //{
+    //    public static void MainTest()
+    //    {
+    //        var eventBus = DependencyResolver.Current.ResolveService<IEventBus>();
+    //        eventBus.Subscribe<CounterEvent, CounterEventHandler1>();
+    //        eventBus.Subscribe<CounterEvent, CounterEventHandler2>();
+    //        eventBus.Subscribe<CounterEvent, DelegateEventHandler<CounterEvent>>();
+    //        eventBus.Publish(new CounterEvent { Counter = 1 });
 
-            eventBus.Unsubscribe<CounterEvent, CounterEventHandler1>();
-            eventBus.Unsubscribe<CounterEvent, DelegateEventHandler<CounterEvent>>();
-            eventBus.Publish(new CounterEvent { Counter = 2 });
-        }
-    }
+    //        eventBus.Unsubscribe<CounterEvent, CounterEventHandler1>();
+    //        eventBus.Unsubscribe<CounterEvent, DelegateEventHandler<CounterEvent>>();
+    //        eventBus.Publish(new CounterEvent { Counter = 2 });
+    //    }
+    //}
 
     internal class CounterEvent : EventBase
     {
@@ -36,7 +37,7 @@ namespace EventBusSample
         private readonly ILogger<CounterEventHandler1> _logger;
         public Task Handle(CounterEvent @event)
         {
-            _logger.LogInformation($"Event Info: {@event.ToJson()}, Handler Type:{GetType().FullName}");
+            _logger.LogInformation($"Event Info: {JsonConvert.SerializeObject(@event)}, Handler Type:{GetType().FullName}");
             return Task.CompletedTask;
         }
     }
@@ -54,7 +55,7 @@ namespace EventBusSample
 
         public Task Handle(CounterEvent @event)
         {
-            _logger.LogInformation($"Event Info: {@event.ToJson()}, Handler Type:{GetType().FullName}");
+            _logger.LogInformation($"Event Info: {JsonConvert.SerializeObject(@event)}, Handler Type:{GetType().FullName}");
             return Task.CompletedTask;
         }
     }

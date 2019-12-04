@@ -9,10 +9,10 @@ namespace EventBus.Abstractions
     {
         void Subscribe<TEvent, TEventHandler>() where TEventHandler : IEventHandler<TEvent> where TEvent : IEventBase;
 
-        void SubscribeDynamic<TEventHandler>() where TEventHandler : IDynamicEventHandler;
+        void SubscribeDynamic<TEventHandler>(string eventName) where TEventHandler : IDynamicEventHandler;
 
-        bool Unsubscribe<TEvent, TEventHandler>() where TEventHandler : IEventHandler<TEvent> where TEvent : IEventBase;
+        void Unsubscribe<TEvent, TEventHandler>() where TEventHandler : IEventHandler<TEvent> where TEvent : IEventBase;
 
-        bool UnsubscribeDynamic<TEventHandler>() where TEventHandler : IDynamicEventHandler;
+        void UnsubscribeDynamic<TEventHandler>(string eventName) where TEventHandler : IDynamicEventHandler;
     }
 }
