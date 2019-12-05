@@ -1,29 +1,52 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using EventBus.Abstractions;
 using EventBus.Events;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace EventBusSample
 {
-    //internal class EventTest
-    //{
-    //    public static void MainTest()
-    //    {
-    //        var eventBus = DependencyResolver.Current.ResolveService<IEventBus>();
-    //        eventBus.Subscribe<CounterEvent, CounterEventHandler1>();
-    //        eventBus.Subscribe<CounterEvent, CounterEventHandler2>();
-    //        eventBus.Subscribe<CounterEvent, DelegateEventHandler<CounterEvent>>();
-    //        eventBus.Publish(new CounterEvent { Counter = 1 });
+    internal class EventService:IHostedService
+    {
+        private readonly ILogger<EventService> _logger;
+        private readonly IEventBus _eventBus;
+        public EventService(
+            IEventBus eventBus,
+            ILogger<EventService> logger
+            )
+        {
+            _eventBus = eventBus;
+            _logger = logger;
+        }
 
-    //        eventBus.Unsubscribe<CounterEvent, CounterEventHandler1>();
-    //        eventBus.Unsubscribe<CounterEvent, DelegateEventHandler<CounterEvent>>();
-    //        eventBus.Publish(new CounterEvent { Counter = 2 });
-    //    }
-    //}
+        public void MainTest()
+        {
+            _eventBus.Subscribe<CounterEvent, CounterEventHandler1>();
+            _eventBus.Subscribe<CounterEvent, CounterEventHandler2>();
+            _eventBus.Publish(new CounterEvent { Counter = 1 });
+
+            _eventBus.Unsubscribe<CounterEvent, CounterEventHandler1>();
+            _eventBus.Publish(new CounterEvent { Counter = 2 });
+        }
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogInformation($"Service {nameof(EventService)} Start");
+            MainTest();
+
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+    }
 
     internal class CounterEvent : EventBase
     {

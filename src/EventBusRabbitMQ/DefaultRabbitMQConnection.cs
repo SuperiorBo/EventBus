@@ -67,9 +67,6 @@ namespace EventBusRabbitMQ
                         }
                     );
 
-                if (_connection == null || !_connection.IsOpen)
-                    _connection = _connectionFactory.CreateConnection();
-
                 policy.Execute(() =>
                 {
                     _connection = 
