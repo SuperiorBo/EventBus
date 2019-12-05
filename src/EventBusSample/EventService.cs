@@ -31,6 +31,7 @@ namespace EventBusSample
             _eventBus.Publish(new CounterEvent { Counter = 1 });
 
             _eventBus.Unsubscribe<CounterEvent, CounterEventHandler1>();
+            _eventBus.Subscribe<CounterEvent, CounterEventHandler3>();
             _eventBus.Publish(new CounterEvent { Counter = 2 });
         }
 
@@ -51,13 +52,19 @@ namespace EventBusSample
     internal class CounterEvent : EventBase
     {
         public int Counter { get; set; }
-        public DateTimeOffset EventAt { get; }
-        public string EventId { get; }
     }
 
     internal class CounterEventHandler1 : IEventHandler<CounterEvent>
     {
         private readonly ILogger<CounterEventHandler1> _logger;
+
+        public CounterEventHandler1(
+            ILogger<CounterEventHandler1> logger
+            )
+        {
+            _logger = logger;
+        }
+
         public Task Handle(CounterEvent @event)
         {
             _logger.LogInformation($"Event Info: {JsonConvert.SerializeObject(@event)}, Handler Type:{GetType().FullName}");
@@ -71,6 +78,25 @@ namespace EventBusSample
 
         public CounterEventHandler2(
             ILogger<CounterEventHandler2> logger
+        )
+        {
+            _logger = logger;
+        }
+
+        public Task Handle(CounterEvent @event)
+        {
+            _logger.LogInformation($"Event Info: {JsonConvert.SerializeObject(@event)}, Handler Type:{GetType().FullName}");
+            return Task.CompletedTask;
+        }
+    }
+
+
+    internal class CounterEventHandler3 : IEventHandler<CounterEvent>
+    {
+        private readonly ILogger<CounterEventHandler3> _logger;
+
+        public CounterEventHandler3(
+            ILogger<CounterEventHandler3> logger
         )
         {
             _logger = logger;

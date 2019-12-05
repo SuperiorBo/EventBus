@@ -114,6 +114,7 @@ namespace EventBusSample
 
             services.AddTransient<CounterEventHandler1>();
             services.AddTransient<CounterEventHandler2>();
+            services.AddTransient<CounterEventHandler3>();
         }
     }
 }

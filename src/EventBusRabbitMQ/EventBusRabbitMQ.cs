@@ -204,6 +204,10 @@ namespace EventBusRabbitMQ
                 _logger.LogWarning(ex, "----- ERROR Processing message \"{Message}\"", message);
             }
 
+            // Even on exception we take the message off the queue.
+            // in a REAL WORLD app this should be handled with a Dead Letter Exchange (DLX). 
+            // For more information see: https://www.rabbitmq.com/dlx.html
+            _consumerChannel.BasicAck(eventArgs.DeliveryTag, multiple: false);
         }
 
         private async Task ProcessEvent(string eventName, string message)
@@ -236,7 +240,7 @@ namespace EventBusRabbitMQ
                         var eventType = _eventStore.GetEventTypeByName(eventName);
 
                         var eventData = JsonConvert.DeserializeObject(message, eventType);
-                        var concreteType = typeof(IIntegrationEventHandler<>).MakeGenericType(eventType);
+                        var concreteType = typeof(IEventHandler<>).MakeGenericType(eventType);
 
                         await Task.Yield();
                         await (Task)concreteType.GetMethod("Handle").Invoke(handler, new object[] { eventData });
