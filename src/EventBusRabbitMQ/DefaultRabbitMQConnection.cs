@@ -76,7 +76,10 @@ namespace EventBusRabbitMQ
 
             if (IsConnected)
             {
+                //当连接被破坏时引发。如果在添加事件处理程序时连接已经被销毁对于此事件，事件处理程序将立即被触发。
                 _connection.ConnectionShutdown += OnConnectionShutdown;
+                //在连接调用的回调中发生异常时发出信号。当ConnectionShutdown处理程序抛出异常时，此事件将发出信号。
+                //如果将来有更多的事件出现在RabbitMQ.Client.IConnection上，那么这个事件当这些事件处理程序中的一个抛出异常时，它们将被标记。
                 _connection.CallbackException += OnCallbackException;
                 _connection.ConnectionBlocked += OnConnectionBlocked;
 
