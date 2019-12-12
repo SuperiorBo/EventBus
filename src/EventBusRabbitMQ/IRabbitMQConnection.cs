@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using RabbitMQ.Client;
 
-namespace EventBusRabbitMQ
+namespace EventBus.RabbitMQ
 {
     public interface IRabbitMQConnection 
         : IDisposable

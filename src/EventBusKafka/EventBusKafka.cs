@@ -9,10 +9,11 @@ using Newtonsoft.Json;
 using Autofac;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
+using Polly;
 
-namespace EventBusKafka
+namespace EventBus.Kafka
 {
-    public class EventBusKafka : IEventBus
+    public class EventBusKafka : IEventBus, IDisposable
     {
         private readonly IKafkaConnection _kafkaConnection;
         private readonly IEventStore _eventStore;
@@ -23,7 +24,7 @@ namespace EventBusKafka
 
 
         private string _topicName;
-        private IConsumer<,> _consumer
+        private IConsumer<string, IEventBase> _consumer;
 
         public EventBusKafka(
             IKafkaConnection kafkaConnection,
@@ -40,8 +41,14 @@ namespace EventBusKafka
             _autofac = autofac;
             _topicName = topicName;
             _retryCount = retryCount;
-            _consumerChannel = CreateConsumer();
+            _consumer = CreateConsumer();
             _eventStore.OnEventRemoved += EventStore_OnEventRemoved;
+        }
+
+        public void Dispose()
+        {
+           _consumer?.Close();
+           _eventStore.Clear();
         }
 
         public void Publish<TEvent>(TEvent @event) where TEvent : IEventBase
@@ -49,8 +56,8 @@ namespace EventBusKafka
             if (!_eventStore.HasSubscriptionsForEvent<TEvent>())
                 throw new ArgumentException("");
 
-            if (!_rabbitMQConnection.IsConnected)
-                _rabbitMQConnection.TryConnect();
+            if (!_kafkaConnection.IsConnected)
+                _kafkaConnection.TryConnect();
 
             var policy = Policy.Handle<BrokerUnreachableException>()
                 .Or<SocketException>()
@@ -105,6 +112,14 @@ namespace EventBusKafka
         }
 
         #region Private Method
+
+        private IConsumer<string, IEventBase> CreateConsumer()
+        {
+            var consumer = new ConsumerBuilder<string, IEventBase>(consumerConfig).Build();
+
+            return consumer;
+        }
+
 
         private void EventStore_OnEventRemoved(object sender, string e)
         {

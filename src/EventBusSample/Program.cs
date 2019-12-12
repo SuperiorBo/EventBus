@@ -7,7 +7,7 @@ using EventBus;
 using EventBus.Abstractions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using EventBusRabbitMQ;
+using EventBus.RabbitMQ;
 using RabbitMQ.Client;
 
 namespace EventBusSample
@@ -94,11 +94,11 @@ namespace EventBusSample
 
             var subscriptionClientName = configuration["SubscriptionClientName"];
 
-            services.AddSingleton<IEventBus, EventBusRabbitMQ.EventBusRabbitMQ>(sp =>
+            services.AddSingleton<IEventBus, EventBusRabbitMQ>(sp =>
             {
                 var rabbitMQConnection = sp.GetRequiredService<IRabbitMQConnection>();
                 var iLifetimeScope = sp.GetRequiredService<ILifetimeScope>();
-                var logger = sp.GetRequiredService<ILogger<EventBusRabbitMQ.EventBusRabbitMQ>>();
+                var logger = sp.GetRequiredService<ILogger<EventBusRabbitMQ>>();
                 var eventStore = sp.GetRequiredService<IEventStore>();
 
                 var retryCount = 5;
@@ -107,7 +107,7 @@ namespace EventBusSample
                     retryCount = int.Parse(configuration["EventBusRetryCount"]);
                 }
 
-                return new EventBusRabbitMQ.EventBusRabbitMQ(rabbitMQConnection, eventStore, logger, iLifetimeScope, subscriptionClientName, retryCount);
+                return new EventBusRabbitMQ(rabbitMQConnection, eventStore, logger, iLifetimeScope, subscriptionClientName, retryCount);
             });
 
             services.AddSingleton<IEventStore, EventStoreInMemory>();

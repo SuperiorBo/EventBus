@@ -3,7 +3,6 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using Autofac;
-using EventBus;
 using EventBus.Abstractions;
 using EventBus.Events;
 using EventBus.Extensions;
@@ -15,7 +14,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 
-namespace EventBusRabbitMQ
+namespace EventBus.RabbitMQ
 {
     public class EventBusRabbitMQ:IEventBus,IDisposable
     {

@@ -1,16 +1,16 @@
 ﻿using System;
 using Confluent.Kafka;
+using EventBus.Events;
 
-namespace EventBusKafka
+namespace EventBus.Kafka
 {
     public interface IKafkaConnection : IDisposable
     {
+
         bool IsConnected { get; }
 
         bool TryConnect();
 
-        IProducer<TKey, TValue> CreateProducer<TKey,TValue>();
-
-        IConsumer<TKey, TValue> CreateConsumer<TKey, TValue>();
+        IClient CreateModel();
     }
 }
