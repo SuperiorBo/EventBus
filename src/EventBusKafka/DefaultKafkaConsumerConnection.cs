@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using Confluent.Kafka;
 using EventBus.Events;
@@ -11,6 +12,10 @@ namespace EventBus.Kafka
     public class DefaultKafkaConsumerConnection : DefaultKafkaConnection
     {
         private readonly ILogger<DefaultKafkaConsumerConnection> _logger;
+        private readonly ConsumerBuilder<Ignore, string> _builder;
+        private bool _disposed;
+        private IConsumer<Ignore, string> _connection;
+
 
         public DefaultKafkaConsumerConnection(
             IEnumerable<KeyValuePair<string, string>> consumerConfig,
@@ -19,22 +24,39 @@ namespace EventBus.Kafka
             ):base(logger,consumerConfig,retryCount)
         {
             _logger = logger??new NullLogger<DefaultKafkaConsumerConnection>();
+            _builder = new ConsumerBuilder<Ignore, string>(_config);
         }
 
-        public override bool IsConnected { get; }
-        public override IClient CreateModel()
+        public override bool IsConnected => _connection != null && !_disposed;
+
+        public override IClient CreateConnect()
         {
-            throw new NotImplementedException();
+            return _connection;
         }
 
         public override Action Connection(IEnumerable<KeyValuePair<string, string>> config)
         {
-            throw new NotImplementedException();
+            return () =>
+            {
+                _connection = _builder.Build();
+            };
         }
 
         public override void Dispose()
         {
-            throw new NotImplementedException();
+            if(_disposed) return;
+
+            _disposed = true;
+
+            try
+            {
+                _connection.Close();
+                _connection.Dispose();
+            }
+            catch (IOException ex)
+            {
+                _logger.LogCritical(ex.ToString());
+            }
         }
     }
 }

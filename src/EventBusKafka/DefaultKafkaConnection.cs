@@ -11,10 +11,8 @@ namespace EventBus.Kafka
     public abstract class DefaultKafkaConnection : IKafkaConnection
     {
         private ILogger<DefaultKafkaConnection> _logger;
-        private IEnumerable<KeyValuePair<string, string>> _config;
+        protected IEnumerable<KeyValuePair<string, string>> _config;
         private int _retryCount;
-
-        private readonly bool _dispose;
 
         object sync_root = new object();
 
@@ -31,7 +29,7 @@ namespace EventBus.Kafka
 
         public abstract bool IsConnected { get; }
 
-        public abstract IClient CreateModel();
+        public abstract IClient CreateConnect();
 
         public bool TryConnect()
         {
@@ -46,7 +44,7 @@ namespace EventBus.Kafka
                         }
                     );
 
-                policy.Execute(() => { Connection(_config); });
+                policy.Execute(Connection);
             }
 
             if (IsConnected)
@@ -61,7 +59,7 @@ namespace EventBus.Kafka
             }
         }
 
-        public abstract Action Connection(IEnumerable<KeyValuePair<string, string>> config);
+        public abstract void Connection();
 
         public abstract void Dispose();
     }

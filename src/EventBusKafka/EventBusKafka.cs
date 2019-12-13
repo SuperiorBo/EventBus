@@ -15,7 +15,8 @@ namespace EventBus.Kafka
 {
     public class EventBusKafka : IEventBus, IDisposable
     {
-        private readonly IKafkaConnection _kafkaConnection;
+        private readonly DefaultKafkaProducerConnection _kafkaProducerConnection;
+        private readonly DefaultKafkaConsumerConnection _kafkaConsumerConnection;
         private readonly IEventStore _eventStore;
         private readonly ILogger<EventBusKafka> _logger;
         private readonly ILifetimeScope _autofac;
@@ -24,10 +25,11 @@ namespace EventBus.Kafka
 
 
         private string _topicName;
-        private IConsumer<string, IEventBase> _consumer;
+        private IConsumer<Ignore, byte[]> _consumer;
 
         public EventBusKafka(
-            IKafkaConnection kafkaConnection,
+            DefaultKafkaProducerConnection kafkaProducerConnection,
+            DefaultKafkaConsumerConnection kafkaConsumerConnection,
             IEventStore eventStore,
             ILogger<EventBusKafka> logger,
             ILifetimeScope autofac,
@@ -35,7 +37,8 @@ namespace EventBus.Kafka
             int retryCount = 5
         )
         {
-            _kafkaConnection = kafkaConnection;
+            _kafkaProducerConnection = kafkaProducerConnection;
+            _kafkaConsumerConnection = kafkaConsumerConnection;
             _eventStore = eventStore ?? new EventStoreInMemory();
             _logger = logger;
             _autofac = autofac;
@@ -56,10 +59,10 @@ namespace EventBus.Kafka
             if (!_eventStore.HasSubscriptionsForEvent<TEvent>())
                 throw new ArgumentException("");
 
-            if (!_kafkaConnection.IsConnected)
-                _kafkaConnection.TryConnect();
+            if (!_kafkaProducerConnection.IsConnected)
+                _kafkaProducerConnection.TryConnect();
 
-            var policy = Policy.Handle<BrokerUnreachableException>()
+            var policy = Policy.Handle<SocketException>()
                 .Or<SocketException>()
                 .WaitAndRetry(_retryCount, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), (ex, time) =>
                 {
@@ -68,26 +71,23 @@ namespace EventBus.Kafka
 
             var eventName = @event.GetType().Name;
 
-            _logger.LogTrace("Creating RabbitMQ channel to publish event: {EventId} ({EventName})", @event.EventId, eventName);
+            _logger.LogTrace("Creating Kafka producer to publish event: {EventId} ({EventName})", @event.EventId, eventName);
 
-            using var channel = _rabbitMQConnection.CreateModel();
+            using var producer = _kafkaProducerConnection.CreateConnect() as IProducer<Ignore, byte[]>;
 
             var message = JsonConvert.SerializeObject(@event);
             var body = Encoding.UTF8.GetBytes(message);
 
             policy.Execute(() =>
             {
-                var properties = channel.CreateBasicProperties();
-                properties.DeliveryMode = 2; // persistent
+                _logger.LogTrace("Publishing event to Kafka: {EventId}", @event.EventId);
 
-                _logger.LogTrace("Publishing event to RabbitMQ: {EventId}", @event.EventId);
-
-                channel.BasicPublish(
-                    exchange: BROKER_NAME,
-                    routingKey: eventName,
-                    mandatory: true,
-                    basicProperties: properties,
-                    body: body);
+                producer.ProduceAsync(
+                    _topicName,
+                    new Message<Ignore, byte[]>
+                    {
+                        Value = body
+                    });
             });
         }
 
@@ -113,11 +113,11 @@ namespace EventBus.Kafka
 
         #region Private Method
 
-        private IConsumer<string, IEventBase> CreateConsumer()
+        private IConsumer<Ignore,byte[]> CreateConsumer()
         {
-            var consumer = new ConsumerBuilder<string, IEventBase>(consumerConfig).Build();
-
-            return consumer;
+            if (_kafkaConsumerConnection.IsConnected)
+                _kafkaConsumerConnection.TryConnect();
+            return _kafkaConsumerConnection.CreateConnect() as IConsumer<Ignore, byte[]>;
         }
 
 

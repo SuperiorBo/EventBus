@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using Confluent.Kafka;
 using EventBus.Events;
@@ -12,40 +13,49 @@ namespace EventBus.Kafka
     public class DefaultKafkaProducerConnection : DefaultKafkaConnection
     {
         private readonly ILogger<DefaultKafkaProducerConnection> _logger;
-        private readonly bool _disposed;
-        private readonly IProducer<Ignore, string> _producer;
+        private readonly ProducerBuilder<Ignore, string> _builder;
+        private bool _disposed;
+        private IProducer<Ignore, string> _connection;
 
         public DefaultKafkaProducerConnection(
-            IEnumerable<KeyValuePair<string, string>> consumerConfig,
+            IEnumerable<KeyValuePair<string, string>> producerConfig,
             ILogger<DefaultKafkaProducerConnection> logger,
             int retryCount = 5
-        ) : base(logger, consumerConfig, retryCount)
+        ) : base(logger, producerConfig, retryCount)
         {
             _logger = logger ?? new NullLogger<DefaultKafkaProducerConnection>();
-            _builder = new ProducerBuilder<Ignore, string>(consumerConfig)
+            _builder = new ProducerBuilder<Ignore, string>(_config);
         }
 
+        public override bool IsConnected => _connection != null && !_disposed;
 
-
-
-        public override bool IsConnected => _producer != null && !_disposed;
-
-        public override IClient CreateModel()
+        public override IProducer<Ignore,byte[]> CreateConnect()
         {
-            throw new NotImplementedException();
+            return _connection;
         }
 
         public override Action Connection(IEnumerable<KeyValuePair<string, string>> config)
         {
             return () =>
             {
-                _builder = .Build();
-            }
+                _connection = _builder.Build();
+            };
         }
 
         public override void Dispose()
         {
-            throw new NotImplementedException();
+            if (_disposed) return;
+
+            _disposed = true;
+
+            try
+            {
+                _connection.Dispose();
+            }
+            catch (IOException ex)
+            {
+                _logger.LogCritical(ex.ToString());
+            }
         }
     }
 }

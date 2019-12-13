@@ -11,6 +11,6 @@ namespace EventBus.Kafka
 
         bool TryConnect();
 
-        IClient CreateModel();
+        IClient CreateConnect();
     }
 }
