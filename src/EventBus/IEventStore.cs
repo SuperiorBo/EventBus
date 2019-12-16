@@ -11,7 +11,7 @@ namespace EventBus
 
         event EventHandler<string> OnEventRemoved;
 
-        bool IsEmpty();
+        bool IsEmpty { get; }
 
         void AddSubscription<TEvent, TEventHandler>() 
             where TEventHandler : IEventHandler<TEvent>

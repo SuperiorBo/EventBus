@@ -10,35 +10,40 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EventBus.Kafka
 {
-    public class DefaultKafkaProducerConnection : DefaultKafkaConnection
+    public class DefaultKafkaProducerConnection<TKey, TValue> : DefaultKafkaConnection
     {
-        private readonly ILogger<DefaultKafkaProducerConnection> _logger;
-        private readonly ProducerBuilder<Ignore, string> _builder;
+        private readonly ILogger<DefaultKafkaProducerConnection<TKey, TValue>> _logger;
+        private readonly ProducerBuilder<TKey, TValue> _builder;
         private bool _disposed;
-        private IProducer<Ignore, string> _connection;
+        private IProducer<TKey, TValue> _connection;
 
         public DefaultKafkaProducerConnection(
             IEnumerable<KeyValuePair<string, string>> producerConfig,
-            ILogger<DefaultKafkaProducerConnection> logger,
+            ILogger<DefaultKafkaProducerConnection<TKey, TValue>> logger,
             int retryCount = 5
         ) : base(logger, producerConfig, retryCount)
         {
-            _logger = logger ?? new NullLogger<DefaultKafkaProducerConnection>();
-            _builder = new ProducerBuilder<Ignore, string>(_config);
+            _logger = logger ?? new NullLogger<DefaultKafkaProducerConnection<TKey, TValue>>();
+            _builder = new ProducerBuilder<TKey, TValue>(_config);
         }
 
         public override bool IsConnected => _connection != null && !_disposed;
 
-        public override IProducer<Ignore,byte[]> CreateConnect()
+        public override IClient CreateConnect()
         {
             return _connection;
         }
 
-        public override Action Connection(IEnumerable<KeyValuePair<string, string>> config)
+        public override Action Connection()
         {
             return () =>
             {
-                _connection = _builder.Build();
+                _connection = _builder
+                    .SetErrorHandler((client, error) =>
+                    {
+                        _logger.LogCritical(error.Reason);
+                    })
+                    .Build();
             };
         }
 

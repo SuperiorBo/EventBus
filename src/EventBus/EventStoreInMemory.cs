@@ -84,7 +84,7 @@ namespace EventBus
 
         public string GetEventKey<T>() => typeof(T).Name;
 
-        public bool IsEmpty() => !_handlers.Keys.Any();
+        public bool IsEmpty => !_handlers.Keys.Any();
 
         #region Private Method
 

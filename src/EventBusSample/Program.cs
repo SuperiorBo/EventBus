@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using EventBus.RabbitMQ;
 using RabbitMQ.Client;
 
-namespace EventBusSample
+namespace EventBusRabbitMQSample
 {
     class Program
     {

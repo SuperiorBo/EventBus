@@ -9,7 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
-namespace EventBusRabbitMQSample
+namespace EventBusKafkaSample
 {
     internal class EventService:IHostedService
     {

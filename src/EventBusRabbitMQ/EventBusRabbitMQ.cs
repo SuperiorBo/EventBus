@@ -51,9 +51,6 @@ namespace EventBus.RabbitMQ
 
         public void Publish<TEvent>(TEvent @event) where TEvent : IEventBase
         {
-            if (!_eventStore.HasSubscriptionsForEvent<TEvent>())
-                throw new ArgumentException("");
-
             if (!_rabbitMQConnection.IsConnected)
                 _rabbitMQConnection.TryConnect();
 
@@ -69,6 +66,9 @@ namespace EventBus.RabbitMQ
             _logger.LogTrace("Creating RabbitMQ channel to publish event: {EventId} ({EventName})", @event.EventId, eventName);
 
             using var channel = _rabbitMQConnection.CreateModel();
+
+            channel.ExchangeDeclare(exchange: BROKER_NAME, 
+                                    type: ExchangeType.Direct);
 
             var message = JsonConvert.SerializeObject(@event);
             var body = Encoding.UTF8.GetBytes(message);
@@ -146,6 +146,12 @@ namespace EventBus.RabbitMQ
             channel.QueueUnbind(queue: _queueName,
                 exchange: BROKER_NAME,
                 routingKey: eventName);
+
+            if (_eventStore.IsEmpty)
+            {
+                _queueName = string.Empty;
+                _consumerChannel.Close();
+            }
         }
 
         private void DoInternalSubscription(string eventName)

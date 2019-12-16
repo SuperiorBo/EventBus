@@ -37,14 +37,15 @@ namespace EventBus.Kafka
 
             lock (sync_root)
             {
-                var policy = Policy.Handle<KafkaException>()
+                var policy = Policy.Handle<ArgumentException>()
+                    .Or<KafkaException>()
                     .WaitAndRetry(_retryCount, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), (ex, time) =>
                         {
                             _logger.LogWarning(ex, "Kafka Client could not connect after {TimeOut}s ({ExceptionMessage})", $"{time.TotalSeconds:n1}", ex.Message);
                         }
                     );
 
-                policy.Execute(Connection);
+                policy.Execute(Connection());
             }
 
             if (IsConnected)
@@ -59,7 +60,7 @@ namespace EventBus.Kafka
             }
         }
 
-        public abstract void Connection();
+        public abstract Action Connection();
 
         public abstract void Dispose();
     }
