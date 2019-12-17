@@ -38,14 +38,24 @@ namespace EventBus.Kafka
             int retryCount = 5
         )
         {
-            _kafkaProducerConnection = kafkaProducerConnection;
-            _kafkaConsumerConnection = kafkaConsumerConnection;
+            _kafkaProducerConnection = kafkaProducerConnection ??
+                                       throw new ArgumentNullException(nameof(kafkaProducerConnection));
+            _kafkaConsumerConnection = kafkaConsumerConnection ??
+                                       throw new ArgumentNullException(nameof(kafkaConsumerConnection));
             _eventStore = eventStore ?? new EventStoreInMemory();
             _logger = logger;
             _autofac = autofac;
             _retryCount = retryCount;
             _eventStore.OnEventRemoved += EventStore_OnEventRemoved;
             _consumer = CreateConsumer();
+            _kafkaConsumerConnection.OnMessageReceived += Consumer_Received;
+            _kafkaConsumerConnection.CallCanceledException += (sender, e) =>
+            {
+                _logger.LogCritical($"Closing consumer. error: {e.Message}");
+                _consumer?.Close();
+                _consumer = CreateConsumer();
+                StartBasicConsume();
+            };
         }
 
         public void Publish<TEvent>(TEvent @event) where TEvent : IEventBase
@@ -68,20 +78,20 @@ namespace EventBus.Kafka
 
             var message = JsonConvert.SerializeObject(@event);
             var body = Encoding.UTF8.GetBytes(message);
-            using (var producer = _kafkaProducerConnection.CreateConnect() as IProducer<Null, byte[]>)
+            var producer = _kafkaProducerConnection.CreateConnect() as IProducer<Null, byte[]>;
+            policy.Execute(() =>
             {
-                policy.Execute(() =>
-                {
-                    _logger.LogTrace("Publishing event to Kafka: {EventId}", @event.EventId);
+                _logger.LogTrace("Publishing event to Kafka: {EventId}", @event.EventId);
 
-                    producer.Produce(
-                        eventName,
-                        new Message<Null, byte[]>
-                        {
-                            Value = body
-                        });
-                });
-            }
+                producer.Produce(
+                    eventName,
+                    new Message<Null, byte[]>
+                    {
+                        Key = null,
+                        Value = body
+                    });
+                producer.Flush();
+            });
         }
 
         public void Subscribe<TEvent, TEventHandler>() where TEvent : IEventBase where TEventHandler : IEventHandler<TEvent>
@@ -151,8 +161,6 @@ namespace EventBus.Kafka
 
             if (_kafkaConsumerConnection != null)
             {
-                _kafkaConsumerConnection.OnMessageReceived += Consumer_Received;
-
                 _kafkaConsumerConnection.Consume();
             }
             else
@@ -171,9 +179,7 @@ namespace EventBus.Kafka
 
                 if (_kafkaConsumerConnection.CreateConnect() is IConsumer<Null, byte[]> consumer)
                 {
-                    var subscription = consumer.Subscription;
-                    subscription.Add(eventName);
-                    consumer.Subscribe(subscription);
+                    consumer.Subscribe(eventName);
                 }
                 else
                 {
@@ -263,13 +269,7 @@ namespace EventBus.Kafka
 
             _consumer = _kafkaConsumerConnection.CreateConnect() as IConsumer<Null, byte[]>;
 
-            _kafkaConsumerConnection.CallCanceledException += (sender, e) =>
-            {
-                _logger.LogCritical($"Closing consumer. error: {e.Message}");
-                _consumer.Close();
-                _consumer = CreateConsumer();
-                StartBasicConsume();
-            };
+            
 
             return _consumer;
         }

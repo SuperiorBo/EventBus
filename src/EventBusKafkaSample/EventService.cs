@@ -28,8 +28,10 @@ namespace EventBusKafkaSample
         {
             _eventBus.Subscribe<CounterEvent, CounterEventHandler1>();
             _eventBus.Subscribe<CounterEvent, CounterEventHandler2>();
-            _eventBus.Publish(new CounterEvent { Counter = 1 });
 
+            Thread.Sleep(10000);
+            _eventBus.Publish(new CounterEvent { Counter = 1 });
+            Thread.Sleep(100);
             _eventBus.Unsubscribe<CounterEvent, CounterEventHandler1>();
             _eventBus.Subscribe<CounterEvent, CounterEventHandler3>();
             _eventBus.Publish(new CounterEvent { Counter = 2 });

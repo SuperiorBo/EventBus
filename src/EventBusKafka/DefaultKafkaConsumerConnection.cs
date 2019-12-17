@@ -12,7 +12,7 @@ namespace EventBus.Kafka
 {
     public class DefaultKafkaConsumerConnection<TKey,TValue> : DefaultKafkaConnection
     {
-        private readonly object sync_consumer = new object();
+        
         private readonly ILogger<DefaultKafkaConsumerConnection<TKey,TValue>> _logger;
         private readonly ConsumerBuilder<TKey, TValue> _builder;
         private bool _disposed;
@@ -20,6 +20,8 @@ namespace EventBus.Kafka
 
         public event EventHandler<ConsumeResult<TKey, TValue>> OnMessageReceived;
         public event EventHandler<OperationCanceledException> CallCanceledException;
+
+        object sync_consumer = new object();
 
         public DefaultKafkaConsumerConnection(
             IEnumerable<KeyValuePair<string, string>> consumerConfig,
@@ -42,7 +44,22 @@ namespace EventBus.Kafka
         {
             return () =>
             {
-                _connection = _builder.Build();
+                _connection = _builder
+                    .SetErrorHandler((_, e) => _logger.LogError($"Error: {e.Reason}"))
+                    //.SetStatisticsHandler((_, json) => _logger.LogInformation($"Statistics: {json}"))
+                    .SetPartitionsAssignedHandler((c, partitions) =>
+                    {
+                        _logger.LogInformation($"Assigned partitions: [{string.Join(", ", partitions)}]");
+                        // possibly manually specify start offsets or override the partition assignment provided by
+                        // the consumer group by returning a list of topic/partition/offsets to assign to, e.g.:
+                        // 
+                        // return partitions.Select(tp => new TopicPartitionOffset(tp, externalOffsets[tp]));
+                    })
+                    .SetPartitionsRevokedHandler((c, partitions) =>
+                    {
+                        _logger.LogInformation($"Revoking assignment: [{string.Join(", ", partitions)}]");
+                    })
+                    .Build();
             };
         }
 
@@ -63,11 +80,11 @@ namespace EventBus.Kafka
             }
         }
 
-        public async Task Consume()
+        public void Consume()
         {
             try
             {
-                await Task.Run(() =>
+                Task.Run(() =>
                 {
                     lock (sync_consumer)
                     {
@@ -118,7 +135,15 @@ namespace EventBus.Kafka
         private void RaiseOnMessageReceived(ConsumeResult<TKey, TValue> consumeResult)
         {
             var handler = OnMessageReceived;
-            handler?.Invoke(this, consumeResult);
+            if (handler == null)
+            {
+                _connection.Commit(consumeResult);
+                _logger.LogWarning($"{OnMessageReceived} Can't be Null");
+            }
+            else
+            {
+                handler.Invoke(this, consumeResult);
+            }
         }
     }
 }
